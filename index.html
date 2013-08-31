@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>网址收藏夹</title>
+</head>
+<style>
+header, 
+section {
+	width:80%;
+	margin: 0 auto;
+}
+
+input, select{
+	width: 100%;
+	margin-bottom: 10px;
+	font-size: 16px;
+	padding: 2px;
+}
+
+.item {
+	border: 1px solid #ccc;
+	background-color: #f8f8f8;
+	padding: 10px;
+	margin-bottom: 10px;
+}
+</style>
+<body>
+<div id="sign"></div>
+<header>
+<h1>网址收藏夹</h1>
+</header>
+<section id="bookmarkapp">
+<div id="post">
+
+</div>
+<ul id="categories">
+	<li><a href="#/">所有</a></li>
+</ul>
+<div id="items">
+	
+</div>
+</section>
+<script type="text/template" id="category-template">
+	<a href="#/category/<%- id %>"><%- name -></a> <span><%- count %></span>
+</script>
+<script type="text/template" id="item-template">
+	<h3 class="title"><a href="<%- url %>"><%- title %></a></h3>
+	<p>分类：<a href="#/category/<%- category.id %>"><%- category.name %></a></p>
+	<p>标签：<% _.each(tags, function(tag){ %> <a href="#/tag/<%- tag %>"><%- tag %></a> <% }); %></p>
+	<button class="destory">删除</button>
+	<button class="edit">编辑</button>
+</script>
+<script type="text/template" id="form-template">
+<input type="text" name="title" placeholder="Title" id="title" />
+<input type="text" name="url" placeholder="Url" id="url" />
+<select name="catgory" id="category"></select>
+<input type="text" name="tags" placeholder="Tags" id="tags" />
+<button type="submit" id="submit">提交</button>
+</script>
+<script src="./assets/backbone/jquery.js"></script>
+<script src="./assets/backbone/underscore.js"></script>
+<script src="./assets/backbone/backbone.js"></script>
+<script src="./assets/backbone/backbone.localStorage.js"></script>
+<script src="./assets/js/app.js"></script>
+</body>
+</html>
