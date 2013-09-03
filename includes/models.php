@@ -77,6 +77,84 @@ function post_data_validate($data)
 }
 
 /**
+ * 根据tag获取书签
+ * @param string $tag
+ * @param array $args 查询参数
+ * @return array 返回两个长度的数组 0为统计1为模型列表
+ */
+function post_all_by_tag($tag, $args=array())
+{
+	$where = array();
+	$db = get_db();
+	$total = 0 + ($db->query('SELECT COUNT(*) FROM post_tag INNER JOIN tag ON post_tag.tag_id=tag.id' . $db->where_clause(array('tag.name'=>$tag)))->fetchColumn());
+
+	if ($total === 0)
+		return array($total, array());
+
+	post_parse_limit($args, $where);
+
+	$where['tag.name'] = $tag;
+	$post_ids = $db->query('SELECT post_id FROM post_tag INNER JOIN tag ON post_tag.tag_id=tag.id' . $db->where_clause($where))->fetchColumn();
+	unset($where['tag.name']);
+	$where['id'] = $post_ids;
+	post_parse_order($args, $where);
+	$result = post_merge(get_db()->select('post', '*', $where));
+	return array($total, $result);
+}
+
+/**
+ * 解析参数$args中的limit
+ * @param array $args
+ * @param array $where 引用
+ */
+function post_parse_limit($args, &$where=array())
+{
+	if (isset($args['limit']))
+	{
+		$where['LIMIT'] = $args['limit'];
+		if (isset($args['offset']))
+			$where['LIMIT'] = array($args['offset'], $where['LIMIT']);
+	}
+}
+
+/**
+ * 解析参数$args中的order
+ * @param array $args
+ * @param array $where 引用
+ */
+function post_parse_order($args, &$where=array())
+{
+	if (isset($args['orderby']) && in_array($args['orderby'], array('id', 'create_time')))
+	{
+		$orderby = $args['orderby'];
+		if (isset($args['order']) && in_array(strtoupper($args['order']), array('ASC', 'DESC')))
+			$order = strtoupper($args['order']);
+		else
+			$order = 'DESC';
+		$where['ORDER'] = $orderby . ' ' . $order;
+	} else
+	{
+		$where['ORDER'] = 'id DESC';
+	}
+}
+
+function post_merge($posts)
+{
+	if (empty($posts))
+		return array();
+
+	foreach ($posts as $key => &$post)
+	{
+		$category = category_get($post['category_id']);
+		if ($category)
+			$post['category'] = $category;
+		unset($post['category_id']);
+		$post['tags'] = post_get_tags($post['id']);
+	}
+	return $posts;
+}
+
+/**
  * 获取所有书签
  * @param array $args
  * @return array 返回两个长度的数组 0为统计1为模型列表
@@ -93,39 +171,10 @@ function post_all($args=array())
 	if ($total === 0)
 		return array($total, array());
 
-	if (isset($args['orderby']) && in_array($args['orderby'], array('id', 'create_time')))
-	{
-		$orderby = $args['orderby'];
-		if (isset($args['order']) && in_array(strtoupper($args['order']), array('ASC', 'DESC')))
-			$order = strtoupper($args['order']);
-		else
-			$order = 'DESC';
-		$where['ORDER'] = $orderby . ' ' . $order;
-	} else
-	{
-		$where['ORDER'] = 'id DESC';
-	}
+	post_parse_order($args, $where);
+	post_parse_limit($args, $where);
 
-	if (isset($args['limit']))
-	{
-		$where['LIMIT'] = $args['limit'];
-		if (isset($args['offset']))
-			$where['LIMIT'] = array($args['offset'], $where['LIMIT']);
-	}
-
-	$result = get_db()->select('post', '*', $where);
-	if ($result)
-	{
-		foreach ($result as $key => &$row)
-		{
-			$category = category_get($row['category_id']);
-			if ($category)
-				$row['category'] = $category;
-			unset($row['category_id']);
-			$row['tags'] = post_get_tags($row['id']);
-		}
-	} else
-		$result = array();
+	$result = post_merge(get_db()->select('post', '*', $where));
 
 	return array($total, $result);
 }
@@ -420,6 +469,10 @@ function category_update_count($id)
 	return get_db()->update('category', array('count' => $count), array('id' => $id));
 }
 
+/**
+ * 是否登录
+ * @return boolean
+ */
 function is_login()
 {
 	return !empty($_SESSION['is_admin']);

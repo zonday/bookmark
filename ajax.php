@@ -18,14 +18,13 @@ request_init();
 header('Content-Type: text/json');
 
 $r = isset($_REQUEST['r']) ? $_REQUEST['r'] : '';
-if (preg_match('/([a-z]+)\/?(\d+)?/', trim($r, '/'), $match)) {
+if (preg_match('/([a-z_]+)\/?(\d+)?/', trim($r, '/'), $match)) {
 	if (isset($match[1]))
 		$action = trim($match[1]);
 
 	if (isset($match[2]))
 		$_GET['id'] = $match[2];
 }
-
 
 if (!empty($action))
 {

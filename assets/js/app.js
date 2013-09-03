@@ -11,7 +11,7 @@ $(function() {
 			if (!user)
 				html ='<a href="#/login">登录</a>';
 			else
-				html = '欢迎你' + _.escape(user.name) +'<a href="#/logout">退出</a>';
+				html = '欢迎你' + _.escape(user.name) +'！ <a href="#/logout">退出</a>';
 			
 			this.$el.html(html);
 		}
@@ -82,6 +82,11 @@ $(function() {
 			this.on('invalid', function(model, error){
 				alert(error);
 			});
+			
+			this.on('error', function(model, xhr) {
+				if (xhr.status == 404)
+					alert('没有权限访问，请登录');
+			});
 		}
 	});
 	
@@ -123,6 +128,8 @@ $(function() {
 		
 		render: function() {
 			this.$el.html(this.template(this.model.toJSON()));
+			this.$edit = this.$('.edit').hide();
+			this.$destory = this.$('.destory').hide();
 			return this;
 		},
 		
@@ -132,14 +139,26 @@ $(function() {
 			formView.listenTo(this.model, 'destroy', formView.reset);
 			formView.listenTo(this.model, 'change', formView.reset);
 			formView.$submit.html('修改');
+			formView.$cannel.show();
 			formView.$title.val(this.model.get('title'));
 			formView.$url.val(this.model.get('url'));
 			formView.$category.val(this.model.get('category').id);
 			formView.$tags.val(this.model.get('tags').join(','));
+			window.location.href = '#post';
 		},
 		
 		clear: function () {
-			this.model.destroy();
+			this.model.destroy({wait: true});
+		},
+		
+		afterLogin: function() {
+			this.$edit.show();
+			this.$destory.show();
+		},
+		
+		afterLogout: function() {
+			this.$edit.hide();
+			this.$destory.hide();
 		}
 	});
 	
@@ -152,6 +171,7 @@ $(function() {
 		
 		events: {
 			'click #submit': 'submit',
+			'click #cannel': 'reset',
 		},
 		
 		initialize: function() {
@@ -167,6 +187,7 @@ $(function() {
 			this.$submit = this.$('#submit');
 			this.$category = this.$('#category');
 			this.$tags = this.$('#tags');
+			this.$cannel = this.$('#cannel');
 			$('#post').append(this.$el);
 			return this;
 		},
@@ -186,15 +207,19 @@ $(function() {
 			this.$category.val('');
 			this.$tags.val('');
 			this.$submit.html('提交');
+			this.$cannel.hide();
 		},
 		
 		submit: function(e) {
-			if (!this.model)
+			if (!this.model) {
 				bookmarks.create(this.newAttributes(), {wait: true});
-			else
-				this.model.save(this.newAttributes(), {wait: true});
-			
-			return false;
+			} else {
+				var model = this.model;
+				this.model.save(this.newAttributes(), {wait: true, success: function(){
+					window.location.href = '#item-' + model.id;
+				}});
+			}
+			e.preventDefault();
 		},
 		
 		newAttributes: function() {
@@ -211,7 +236,45 @@ $(function() {
 		}
 	});
 	
+	var LoginView = Backbone.View.extend({
+		tagName: 'form',
+		
+		events: {
+			'click button': 'login',
+		},
+		
+		render: function() {
+			this.$el.html($('#login-template').html());
+			$('#sign').after(this.$el);
+			this.$username = this.$('#username');
+			this.$password = this.$('#password');
+		},
+		
+		login: function(e) {
+			var self = this;
+			$.ajax({
+				url: 'ajax.php?r=login',
+				type: 'post',
+				data: {username: this.$username.val(), password: this.$password.val()},
+				success: function(resp) {
+					if (resp.error == 0) {
+						user = resp.user;
+						appView.signView.render();
+						self.$el.hide();
+						appView.formView.$el.show();
+						appView.trigger('afterLogin');
+					} else {
+						alert(resp.message);
+					}
+				}
+			});
+			e.preventDefault();
+		}
+	});
+	
 	var AppView = Backbone.View.extend({
+		isFetch: false,
+		
 		el: '#bookmarkapp',
 		
 		formTemplate: _.template($('#form-template').html()),
@@ -222,18 +285,44 @@ $(function() {
 			this.listenTo(categories, 'reset', this.addCategories);
 			this.formView = new FormView();
 			this.signView = new SignView();
+			this.loginView = new LoginView();
 			this.categoiresView = new CategoriesView();
+			
+			if (!this.isFetch)
+				bookmarks.fetch({reset: true, data:{'page':1}});
+			
+			this.checkLogin();
+		},
+		
+		checkLogin: function()
+		{
+			var self = this;
+			$.ajax({
+				url: 'ajax.php?r=is_login',
+				success: function(resp) {
+					if (resp.error == 0) {
+						user = resp.user;
+						self.signView.render();
+						self.loginView.$el.hide();
+						self.formView.$el.show();
+						self.trigger('afterLogin');
+					}
+				}
+			});
 		},
 		
 		render: function() {
-			this.formView.render();
 			this.signView.render();
+			this.formView.render().$el.hide();
 			categories.fetch({reset:true});
 		},
 		
 		addOne: function(bookmark) {
 			if (!bookmark.isNew()) {
 				var view = new BookmarkView({model: bookmark});
+				this.on('afterLogin', view.afterLogin, view);
+				this.on('afterLogout', view.afterLogout, view);
+				view.$el.attr('id', 'item-' + bookmark.id);
 				$('#items').prepend(view.render().el);
 			}
 		},
@@ -241,11 +330,14 @@ $(function() {
 		addAll: function(bookmarks) {
 			this.$('#items').html('');
 			bookmarks.each(this.addOne, this);
-		}
+			this.isFetch = true;
+		},
 	});
 	
 	var BookmarkRouter = Backbone.Router.extend({
 		routes: {
+			'logout': 'logout',
+			'login': 'login',
 			'page/:page': 'show',
 			'category/:id': 'showByCategory',
 			'category/:id/page/:page': 'showByCategory',
@@ -253,12 +345,30 @@ $(function() {
 			'tag/:tag/page/:page': 'showByTag'
 		},
 		
+		logout: function() {
+			$.ajax({
+				url: 'ajax.php?r=logout',
+				success: function(resp) {
+					if (resp == 1) {
+						user = null;
+						appView.signView.render();
+						appView.formView.$el.hide();
+						appView.trigger('afterLogout');
+					}
+				}
+			});
+		},
+		
+		login: function() {
+			appView.loginView.render();
+			appView.loginView.$el.show();
+		},
+		
 		show: function(page) {
 			var data = {};
 			if (page)
 				data['page'] = page;
 			bookmarks.fetch({reset: true, data: data});
-			
 		},
 		
 		showByCategory: function (category_id, page) {
@@ -272,17 +382,24 @@ $(function() {
 			bookmarks.fetch({reset: true, data: data});
 		},
 		
-		showByTag: function ($tag, page) {
+		showByTag: function (tag, page) {
+			var data = {};
+			if (tag)
+				data['tag'] = tag;
 			
+			if (page)
+				data['page'] = page;
+			
+			bookmarks.fetch({reset: true, data: data});
 		}
 	});
 	
 	Backbone.emulateHTTP = true;
 	Backbone.emulateJSON = true;
-	
+
+	var appView = new AppView();
 	var bookmarkRouter = new BookmarkRouter();
 	Backbone.history.start();
 	
-	var appView = new AppView();
 	appView.render();
 });

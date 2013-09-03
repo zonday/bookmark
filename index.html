@@ -5,6 +5,10 @@
 <title>网址收藏夹</title>
 </head>
 <style>
+body {
+	font-size: 14px;
+}
+
 header, 
 section {
 	width:80%;
@@ -13,7 +17,6 @@ section {
 
 input, select{
 	width: 100%;
-	margin-bottom: 10px;
 	font-size: 16px;
 	padding: 2px;
 }
@@ -24,10 +27,14 @@ input, select{
 	padding: 10px;
 	margin-bottom: 10px;
 }
+
+#sign {
+	text-align: right;
+}
 </style>
 <body>
-<div id="sign"></div>
 <header>
+<div id="sign"></div>
 <h1>网址收藏夹</h1>
 </header>
 <section id="bookmarkapp">
@@ -41,8 +48,11 @@ input, select{
 	
 </div>
 </section>
-<script type="text/template" id="category-template">
-	<a href="#/category/<%- id %>"><%- name -></a> <span><%- count %></span>
+
+<script type="text/template" id="login-template">
+	<p><label>用户名：<input type="text" id="username" name="username" /></label></p>
+	<p><label>密码: <input type="password" id="password" name="password" /></label></p>
+	<p><button>登录</button>
 </script>
 <script type="text/template" id="item-template">
 	<h3 class="title"><a href="<%- url %>"><%- title %></a></h3>
@@ -57,6 +67,7 @@ input, select{
 <select name="catgory" id="category"></select>
 <input type="text" name="tags" placeholder="Tags" id="tags" />
 <button type="submit" id="submit">提交</button>
+<button type="button" id="cannel">取消</button>
 </script>
 <script src="./assets/backbone/jquery.js"></script>
 <script src="./assets/backbone/underscore.js"></script>
