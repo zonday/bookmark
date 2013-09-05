@@ -15,15 +15,14 @@ section {
 	margin: 0 auto;
 }
 
-input, select{
+#post input, #post select{
 	width: 100%;
 	font-size: 16px;
 	padding: 2px;
 }
 
 .item {
-	border: 1px solid #ccc;
-	background-color: #f8f8f8;
+	border-bottom: 1px dashed #ccc;
 	padding: 10px;
 	margin-bottom: 10px;
 }
@@ -55,9 +54,9 @@ input, select{
 	<p><button>登录</button>
 </script>
 <script type="text/template" id="item-template">
-	<h3 class="title"><a href="<%- url %>"><%- title %></a></h3>
+	<h3 class="title"><a href="<%- url %>" target="_blank"><%- title %></a></h3>
 	<p>分类：<a href="#/category/<%- category.id %>"><%- category.name %></a></p>
-	<p>标签：<% _.each(tags, function(tag){ %> <a href="#/tag/<%- tag %>"><%- tag %></a> <% }); %></p>
+	<p>标签：<% _.each(tags, function(tag){ %><a href="#/tag/<%- tag %>"><%- tag %></a> <% }); %></p>
 	<button class="destory">删除</button>
 	<button class="edit">编辑</button>
 </script>

@@ -303,7 +303,7 @@ function post_update($source=array())
 /**
  * 删除书签
  * @param integer $id 书签id
- * @return boolean 成功返回true，失败返回false
+ * @return boolean 成功返回影响的行数，失败返回false
  */
 function post_delete($id)
 {

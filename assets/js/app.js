@@ -1,5 +1,6 @@
+'use strict';
+
 $(function() {
-	'use strict';
 	var tagsSplitter = /\s*,\s*/;
 	var user = null;
 	
@@ -92,6 +93,8 @@ $(function() {
 	
 	var Bookmarks = Backbone.Collection.extend({
 		total: 0,
+		
+		page: 1,
 		
 		model: Bookmark,
 		
@@ -281,6 +284,7 @@ $(function() {
 
 		initialize: function() {
 			this.listenTo(bookmarks, 'add', this.addOne);
+			this.listenTo(bookmarks, 'reset', this.pagination);
 			this.listenTo(bookmarks, 'reset', this.addAll);
 			this.listenTo(categories, 'reset', this.addCategories);
 			this.formView = new FormView();
@@ -288,8 +292,12 @@ $(function() {
 			this.loginView = new LoginView();
 			this.categoiresView = new CategoriesView();
 			
-			if (!this.isFetch)
-				bookmarks.fetch({reset: true, data:{'page':1}});
+			//if (!this.isFetch)
+				//bookmarks.fetch({reset: true, data:{'page':1}});
+			
+			$(window).scroll(function(){
+				var scrollHeight = $(window).scrollTop() + $(window).height();
+			});
 			
 			this.checkLogin();
 		},
@@ -323,7 +331,7 @@ $(function() {
 				this.on('afterLogin', view.afterLogin, view);
 				this.on('afterLogout', view.afterLogout, view);
 				view.$el.attr('id', 'item-' + bookmark.id);
-				$('#items').prepend(view.render().el);
+				$('#items').append(view.render().el);
 			}
 		},
 		
@@ -332,10 +340,28 @@ $(function() {
 			bookmarks.each(this.addOne, this);
 			this.isFetch = true;
 		},
+		
+		pagination: function(bookmarks) {
+			var page = bookmarks.page;
+			var total = bookmarks.total;
+			var maxPage = Math.ceil(total/20);
+			var pagination = [];
+			if (maxPage > 1) {
+				if (page == 1) {
+					pagination.push({'下一页': page+1});
+				} else if (page > 1 && page < maxPage-1) {
+					pagination.push({'上一页': page-1});
+					pagination.push({'下一页': page+1});
+				} else {
+					pagination.push({'上一页': page-1});
+				}
+			}
+		}
 	});
 	
 	var BookmarkRouter = Backbone.Router.extend({
 		routes: {
+			'': 'show',
 			'logout': 'logout',
 			'login': 'login',
 			'page/:page': 'show',
@@ -366,9 +392,11 @@ $(function() {
 		
 		show: function(page) {
 			var data = {};
-			if (page)
-				data['page'] = page;
-			bookmarks.fetch({reset: true, data: data});
+			page = parseInt(page);
+			if (!page)
+				page = 1;
+			bookmarks.page = page;
+			bookmarks.fetch({reset: true, data: {page: page}});
 		},
 		
 		showByCategory: function (category_id, page) {
@@ -376,9 +404,11 @@ $(function() {
 			if (category_id)
 				data['category_id'] = category_id;
 			
-			if (page)
-				data['page'] = page;
-			
+			page = parseInt(page);
+			if (!page)
+				page = 1;
+			data['page'] = page;
+			bookmarks.page = page;
 			bookmarks.fetch({reset: true, data: data});
 		},
 		
@@ -387,9 +417,11 @@ $(function() {
 			if (tag)
 				data['tag'] = tag;
 			
-			if (page)
-				data['page'] = page;
-			
+			page = parseInt(page);
+			if (!page)
+				page = 1;
+			data['page'] = page;
+			bookmarks.page = page;
 			bookmarks.fetch({reset: true, data: data});
 		}
 	});
@@ -399,6 +431,9 @@ $(function() {
 
 	var appView = new AppView();
 	var bookmarkRouter = new BookmarkRouter();
+	Backbone.history.on('route', function(){
+		console.log(arguments);
+	});
 	Backbone.history.start();
 	
 	appView.render();
