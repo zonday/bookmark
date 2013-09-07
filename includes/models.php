@@ -379,7 +379,23 @@ function post_save_tags($id, $tags, $new_record=false)
 		get_db()->delete('post_tag', array('tag_id' => $del_tag_ids));
 	}
 
+	tag_update_count(array_merge($add_tag_ids, $del_tag_ids));
+
 	return $tags;
+}
+
+function tag_update_count($tag_ids)
+{
+	$list = array();
+	foreach ($tag_ids as $tag_id)
+	{
+		$list[$tag_id] = get_db()->count('post_tag', array('tag_id' => $tag_id));
+	}
+
+	foreach ($list as $tag_id => $count)
+	{
+		get_db()->update('tag', array('count' => $count), array('id' => $tag_id));
+	}
 }
 
 /**
